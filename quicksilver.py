@@ -4,6 +4,8 @@ import requests
 import json
 import base64
 import getpass
+import time
+import os
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -45,11 +47,33 @@ def unwrap_jwt(jwt):
     token = jwt.split('.')
     return json.loads(base64.urlsafe_b64decode(token[1]))
 
-def get_messages(peer, jwt):
+def send_message(msg, to, jwt):
+    params = { 'to': to }
+    headers = { 'Session': jwt }
+
+    res = requests.post(host + '/send', data=msg, params=params, headers=headers, verify=False)
+
+def get_messages(peer, since, jwt):
     params = { 'peer': peer }
     headers = { 'Session': jwt }
+
+    if since != None:
+        params['since'] = since
+
     res = requests.get(host + '/get', params=params, headers=headers, verify=False)
+
     return json.loads(res.text)
+
+def poll_messages(peer, jwt):
+    timestamp = None
+    while True:
+        messages = get_messages(peer_name, timestamp, jwt)
+        for message in messages:
+            author = message['Username' ]
+            timestamp = message['Timestamp']
+            msg = message['Message']
+            print('\n[%s] %s: %s' % (timestamp, author, msg))
+        time.sleep(2)
 
 if __name__ == '__main__':
     jwt = login()
@@ -59,12 +83,10 @@ if __name__ == '__main__':
     my_id = session['Uid']
     peer_id, peer_name  = lookup_user()
 
-    messages = get_messages(peer_name, jwt)
-    for message in messages:
-        author = message['Username']
-        time = message['Timestamp']
-        msg = message['Message']
+    if os.fork() == 0:
+        poll_messages(peer_name, jwt)
 
-        print('[%s] %s: %s' % (time, author, msg))
-
-    msg = input('\rChat with %s: ' % peer_name)
+    while True:
+        print('\rChat with %s: ' % peer_name, flush=True, end='')
+        msg = input()
+        send_message(msg, peer_name, jwt)
