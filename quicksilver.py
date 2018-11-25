@@ -6,16 +6,15 @@ import base64
 import getpass
 import time
 import os
+import curses
+import threading
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 host = 'https://localhost:9090'
 
-def login():
-    user = input('Username: ')
-    passwd = getpass.getpass('Password: ')
-
+def login(user, passwd):
     creds = json.dumps({
         'Username': user,
         'Password': passwd
@@ -26,22 +25,17 @@ def login():
     if res.status_code == 200:
         return res.text
 
-    print('\nLogin failed:', res.text)
-    print('Please try again.', end='\n\n')
+    return False
 
-    return login()
-
-def lookup_user():
-    user = input('Who would you like to talk to? ')
-
+def lookup_user(user):
     params = { 'user': user }
     res = requests.get(host + '/lookup', params=params, verify=False)
 
     if res.status_code == 200:
         print('')
-        return res.text, user
+        return res.text
 
-    print('User %s does not exist.' % user)
+    return 0
 
 def unwrap_jwt(jwt):
     token = jwt.split('.')
@@ -64,29 +58,85 @@ def get_messages(peer, since, jwt):
 
     return json.loads(res.text)
 
-def poll_messages(peer, jwt):
-    timestamp = None
+def poll_messages(peer_name, jwt, stdscrn):
+        timestamp = None
+        while True:
+            messages = get_messages(peer_name, timestamp, jwt)
+
+            if timestamp:
+                stdscrn.addstr(0, 0, timestamp)
+                stdscrn.refresh()
+
+            if messages:
+                h, w = stdscrn.getmaxyx()
+
+                for i in reversed(range(len(messages))):
+                    # stdscrn.move(0, 0)
+                    # stdscrn.deleteln()
+
+                    message = messages[i]
+                    author = message['Username' ]
+                    timestamp = message['Timestamp']
+                    msg = message['Message']
+                    display = '[%s] %s: %s' % (timestamp, author, msg)
+
+                    # stdscrn.addstr(h - 1 - i, 0, display)
+
+                stdscrn.refresh()
+
+            time.sleep(2)
+
+def main(stdscrn):
+    curses.echo()
+
+    jwt = False
+    while not jwt:
+        stdscrn.addstr(0, 0, 'Please Login')
+        stdscrn.addstr(1, 0, 'Username: ')
+        stdscrn.addstr(2, 0, 'Password: ')
+        stdscrn.refresh()
+
+        user = stdscrn.getstr(1, len('Username: ')).decode('utf-8')
+        passwd = stdscrn.getstr(2, len('Password: ')).decode('utf-8')
+
+        jwt = login(user, passwd)
+
+        stdscrn.erase()
+        stdscrn.refresh()
+
+    session = unwrap_jwt(jwt)
+    my_id = session['Uid']
+
+    peer_id = False
+    peer_name = False
+    while not peer_id:
+        stdscrn.addstr(0, 0, 'Who would you like to chat with? ')
+
+        peer_name = stdscrn.getstr(0, len('Who would you like to chat with? ')).decode('utf-8')
+
+        peer_id = lookup_user(peer_name)
+
+        stdscrn.erase()
+        stdscrn.refresh()
+
+    win = stdscrn.subwin(curses.LINES - 1, curses.COLS, 0, 0)
+    msgfetch = threading.Thread(
+        group = None,
+        target = poll_messages,
+        name = 'msgfetch',
+        args = (peer_name, jwt, win))
+    msgfetch.start()
+
     while True:
-        messages = get_messages(peer_name, timestamp, jwt)
-        for message in messages:
-            author = message['Username' ]
-            timestamp = message['Timestamp']
-            msg = message['Message']
-            print('\n[%s] %s: %s' % (timestamp, author, msg))
-        time.sleep(2)
+        prompt = 'Chat with %s: ' % peer_name
+        stdscrn.addstr(curses.LINES - 1, 0, prompt)
+        stdscrn.refresh()
+
+        msg = stdscrn.getstr(curses.LINES - 1, len(prompt)).decode('utf-8')
+        stdscrn.clrtoeol()
+        stdscrn.refresh()
+
+        send_message(msg, peer_name, jwt)
 
 if __name__ == '__main__':
-    jwt = login()
-    session = unwrap_jwt(jwt)
-    print('')
-
-    my_id = session['Uid']
-    peer_id, peer_name  = lookup_user()
-
-    if os.fork() == 0:
-        poll_messages(peer_name, jwt)
-
-    while True:
-        print('\rChat with %s: ' % peer_name, flush=True, end='')
-        msg = input()
-        send_message(msg, peer_name, jwt)
+    curses.wrapper(main)
