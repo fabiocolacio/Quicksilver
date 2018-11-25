@@ -86,36 +86,35 @@ if __name__ == '__main__':
     win.connect('destroy', Gtk.main_quit)
 
     login_dialog = gui.LoginDialog(win)
-    status = login_dialog.run()
-    if status == Gtk.ResponseType.OK:
-        user = login_dialog.user_entry.get_text()
-        passwd = login_dialog.passwd_entry.get_text()
+    while not jwt:
+        status = login_dialog.run()
+        if status == Gtk.ResponseType.OK:
+            user = login_dialog.user_entry.get_text()
+            passwd = login_dialog.passwd_entry.get_text()
 
-        jwt = login(user, passwd)
-        session = unwrap_jwt(jwt)
-        my_id = session['Uid']
-        my_name = user
+            jwt = login(user, passwd)
 
-        print(my_id)
-
-        login_dialog.destroy()
-    else:
-        sys.exit(0)
+            if jwt:
+                session = unwrap_jwt(jwt)
+                my_id = session['Uid']
+                my_name = user
+                login_dialog.destroy()
+        else:
+            sys.exit(0)
 
     peer_dialog = gui.PeerDialog(win)
-    status = peer_dialog.run()
-    if status == Gtk.ResponseType.OK:
-        user = peer_dialog.user_entry.get_text()
+    while not peer_id:
+        status = peer_dialog.run()
+        if status == Gtk.ResponseType.OK:
+            user = peer_dialog.user_entry.get_text()
 
-        peer_id = lookup_user(user)
-        peer_name = user
+            peer_id = lookup_user(user)
 
-        print(peer_id)
-        print(peer_name)
-
-        peer_dialog.destroy()
-    else:
-        sys.exit(0)
+            if peer_id:
+                peer_name = user
+                peer_dialog.destroy()
+        else:
+            sys.exit(0)
 
     poller = threading.Thread(
         group = None,
