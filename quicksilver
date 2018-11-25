@@ -1,0 +1,129 @@
+#!/bin/python3
+
+import requests
+import json
+import base64
+import time
+import os
+import sys
+import gui
+import threading
+import gi
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+host = 'https://localhost:9090'
+
+def login(user, passwd):
+    creds = json.dumps({
+        'Username': user,
+        'Password': passwd
+    })
+
+    res = requests.get(host + '/login', data=creds, verify=False)
+
+    if res.status_code == 200:
+        return res.text
+
+    return False
+
+def lookup_user(user):
+    params = { 'user': user }
+    res = requests.get(host + '/lookup', params=params, verify=False)
+
+    if res.status_code == 200:
+        print('')
+        return res.text
+
+    return 0
+
+def unwrap_jwt(jwt):
+    token = jwt.split('.')
+    return json.loads(base64.urlsafe_b64decode(token[1]))
+
+def send_message(msg, to, jwt):
+    params = { 'to': to }
+    headers = { 'Session': jwt }
+
+    res = requests.post(host + '/send', data=msg, params=params, headers=headers, verify=False)
+
+def get_messages(peer, since, jwt):
+    params = { 'peer': peer }
+    headers = { 'Session': jwt }
+
+    if since != None:
+        params['since'] = since
+
+    res = requests.get(host + '/get', params=params, headers=headers, verify=False)
+
+    return json.loads(res.text)
+
+def poll_messages(peer_name, jwt, win):
+    timestamp = None
+    while True:
+        messages = get_messages(peer_name, timestamp, jwt)
+        print('hoi')
+        if messages:
+            for message in messages:
+                author = message['Username' ]
+                timestamp = message['Timestamp']
+                msg = message['Message']
+                print('hai')
+                win.show_message(msg, author, timestamp)
+        time.sleep(2)
+
+if __name__ == '__main__':
+    jwt = False
+    session = False
+    my_id = False
+    my_name = False
+    peer_id = False
+    peer_name = False
+
+    win = gui.ChatWindow()
+    win.connect('destroy', Gtk.main_quit)
+
+    login_dialog = gui.LoginDialog(win)
+    status = login_dialog.run()
+    if status == Gtk.ResponseType.OK:
+        user = login_dialog.user_entry.get_text()
+        passwd = login_dialog.passwd_entry.get_text()
+
+        jwt = login(user, passwd)
+        session = unwrap_jwt(jwt)
+        my_id = session['Uid']
+        my_name = user
+
+        print(my_id)
+
+        login_dialog.destroy()
+    else:
+        sys.exit(0)
+
+    peer_dialog = gui.PeerDialog(win)
+    status = peer_dialog.run()
+    if status == Gtk.ResponseType.OK:
+        user = peer_dialog.user_entry.get_text()
+
+        peer_id = lookup_user(user)
+        peer_name = user
+
+        print(peer_id)
+        print(peer_name)
+
+        peer_dialog.destroy()
+    else:
+        sys.exit(0)
+
+    poller = threading.Thread(
+        group = None,
+        target = poll_messages,
+        name = 'poller',
+        args = (peer_name, jwt, win))
+    poller.start()
+
+    Gtk.main()
