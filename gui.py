@@ -2,6 +2,7 @@ import gi
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
+from gi.repository import Gdk
 
 class LoginDialog(Gtk.Dialog):
     def __init__(self, parent):
@@ -63,6 +64,8 @@ class ChatWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
 
+        self.cb = False
+
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
 
         self.buf = Gtk.TextBuffer.new()
@@ -82,6 +85,7 @@ class ChatWindow(Gtk.Window):
         self.out_text.set_size_request(0, 20)
         self.out_text.set_accepts_tab(False)
         self.out_text.set_wrap_mode(Gtk.WrapMode.NONE)
+        self.out_text.connect('key-press-event', self._key_pressed)
 
         self.bot_scroll = Gtk.ScrolledWindow.new(None, None)
         self.bot_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)
@@ -99,3 +103,17 @@ class ChatWindow(Gtk.Window):
         txt = '[%s] %s: %s\n' % (time, author, text)
 
         self.buf.insert(iter, txt)
+
+    def _key_pressed(self, text_view, key_event):
+        if key_event.keyval == Gdk.KEY_Return:
+            buf = text_view.get_buffer()
+            start = buf.get_start_iter()
+            end = buf.get_end_iter()
+            txt = buf.get_text(start, end, False)
+
+            if self.cb:
+                self.cb(txt)
+
+            buf.set_text('')
+            return True
+        return False
