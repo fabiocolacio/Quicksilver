@@ -104,6 +104,9 @@ class ChatWindow(Gtk.Window):
 
         self.buf.insert(iter, txt)
 
+        adj = self.top_scroll.get_vadjustment()
+        adj.set_value(adj.get_upper())
+
     def _key_pressed(self, text_view, key_event):
         if key_event.keyval == Gdk.KEY_Return:
             buf = text_view.get_buffer()
