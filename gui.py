@@ -3,6 +3,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import Pango
 
 class LoginDialog(Gtk.Dialog):
     def __init__(self, parent):
@@ -64,11 +65,26 @@ class ChatWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
 
+        self.colors = [
+            'darkgreen',
+            'red',
+            'blue',
+            'purple'
+        ]
+        self.users = {}
+        self.cur_color = 0
+
         self.cb = False
 
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
 
         self.buf = Gtk.TextBuffer.new()
+
+        self.tag_bold = self.buf.create_tag('bold',
+            weight=Pango.Weight.BOLD)
+        self.tag_italic = self.buf.create_tag('italic',
+            style=Pango.Style.ITALIC)
+
         self.in_text = Gtk.TextView.new_with_buffer(self.buf)
         self.in_text.set_editable(False)
         self.in_text.set_cursor_visible(False)
@@ -98,11 +114,22 @@ class ChatWindow(Gtk.Window):
         self.set_default_size(600, 500)
         self.show_all()
 
+    def get_color_for_user(self, username):
+        if username in self.users:
+            return self.users[username]
+        else:
+            self.users[username] = self.colors[self.cur_color]
+            self.cur_color = (self.cur_color + 1) % len(self.colors)
+            return self.get_color_for_user(username)
+
     def show_message(self, text, author, time):
         iter = self.buf.get_end_iter()
-        txt = '[%s] %s: %s\n' % (time, author, text)
 
-        self.buf.insert(iter, txt)
+        color = self.get_color_for_user(author)
+
+        txt = '<b>[%s] <span foreground="%s">%s</span></b>: %s\n\0' % (time, color, author, text)
+
+        self.buf.insert_markup(iter, txt, -1)
 
         adj = self.top_scroll.get_vadjustment()
         adj.set_value(adj.get_upper())

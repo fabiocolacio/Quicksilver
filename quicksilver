@@ -11,7 +11,7 @@ import threading
 import gi
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -71,7 +71,7 @@ def poll_messages(peer_name, jwt, win):
                 author = message['Username' ]
                 timestamp = message['Timestamp']
                 msg = message['Message']
-                win.show_message(msg, author, timestamp)
+                GLib.idle_add( win.show_message, msg, author, timestamp)
         time.sleep(2)
 
 if __name__ == '__main__':
@@ -115,6 +115,8 @@ if __name__ == '__main__':
                 peer_dialog.destroy()
         else:
             sys.exit(0)
+
+    win.show_all()
 
     poller = threading.Thread(
         group = None,
