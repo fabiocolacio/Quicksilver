@@ -1,3 +1,4 @@
+import random
 import gi
 
 gi.require_version('Gtk', '3.0')
@@ -72,7 +73,7 @@ class ChatWindow(Gtk.Window):
             'purple'
         ]
         self.users = {}
-        self.cur_color = 0
+        self.cur_color = random.randint(0, len(self.colors) - 1)
 
         self.cb = False
 
@@ -88,7 +89,7 @@ class ChatWindow(Gtk.Window):
         self.in_text = Gtk.TextView.new_with_buffer(self.buf)
         self.in_text.set_editable(False)
         self.in_text.set_cursor_visible(False)
-        self.in_text.set_pixels_below_lines(10)
+        self.in_text.set_pixels_below_lines(5)
         self.in_text.set_wrap_mode(Gtk.WrapMode.WORD)
 
         self.top_scroll = Gtk.ScrolledWindow.new(None, None)

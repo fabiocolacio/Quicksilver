@@ -112,6 +112,7 @@ if __name__ == '__main__':
 
             if peer_id:
                 peer_name = user
+                win.set_title('Chatting with %s' % peer_name)
                 peer_dialog.destroy()
         else:
             sys.exit(0)
