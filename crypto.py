@@ -47,7 +47,7 @@ def encrypt(plaintext, keydata):
 
     # Pad the message with PKCS7
     padder = padding.PKCS7(AES_BLOCKSIZE * 8).padder()
-    padded_plaintext = padder.update(plaintext)
+    padded_plaintext = padder.update(plaintext.encode('utf-8'))
     padded_plaintext += padder.finalize()
 
     # Encrypt the Plaintext with AES-256-CBC
@@ -74,10 +74,10 @@ def encrypt(plaintext, keydata):
 
     # Encode message into a JSON structure
     out = {
-        "Key": base64.urlsafe_b64encode(encrypted_keys),
-        "IV": base64.urlsafe_b64encode(iv),
-        "Tag": base64.urlsafe_b64encode(tag),
-        "Msg": base64.urlsafe_b64encode(ciphertext)
+        "Key": base64.urlsafe_b64encode(encrypted_keys).decode('utf-8'),
+        "IV": base64.urlsafe_b64encode(iv).decode('utf-8'),
+        "Tag": base64.urlsafe_b64encode(tag).decode('utf-8'),
+        "Msg": base64.urlsafe_b64encode(ciphertext).decode('utf-8')
     }
 
     return json.dumps(out)
@@ -143,7 +143,7 @@ def decrypt(ciphertext, keydata):
     # Unpad the message with PKCS7
     unpadder = padding.PKCS7(AES_BLOCKSIZE * 8).unpadder()
 
-    return unpadder.update(padded_plaintext) + unpadder.finalize()
+    return (unpadder.update(padded_plaintext) + unpadder.finalize()).decode('utf-8')
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
