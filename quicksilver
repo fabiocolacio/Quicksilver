@@ -74,6 +74,11 @@ def poll_messages(peer_name, jwt, win):
                 GLib.idle_add( win.show_message, msg, author, timestamp)
         time.sleep(2)
 
+def clean_exit(win):
+
+    win.destroy()
+    Gtk.main_quit()
+
 if __name__ == '__main__':
     jwt = False
     session = False
@@ -124,6 +129,7 @@ if __name__ == '__main__':
         target = poll_messages,
         name = 'poller',
         args = (peer_name, jwt, win))
+    poller.daemon = True
     poller.start()
 
     win.cb = lambda txt: send_message(txt, peer_name, jwt)
