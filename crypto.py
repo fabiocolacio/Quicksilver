@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-import os, sys, json
+import os, sys, json, base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as apadding 
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as apadding
 from cryptography.hazmat.primitives import hashes, hmac, padding, serialization
 from cryptography.hazmat.backends import default_backend
 from cryptography.exceptions import InvalidSignature
@@ -41,7 +41,7 @@ def encrypt(plaintext, keydata):
     Returns:
         str: A string representation of the encrypted message encapsulated in a JSON object.
     """
-    
+
     # Decode pem-encoded public key
     pubkey = serialization.load_pem_public_key(keydata, backend=default_backend())
 
@@ -74,10 +74,10 @@ def encrypt(plaintext, keydata):
 
     # Encode message into a JSON structure
     out = {
-        "Key": encrypted_keys.encode("base64"),
-        "IV": iv.encode("base64"),
-        "Tag": tag.encode("base64"),
-        "Msg": ciphertext.encode("base64")
+        "Key": base64.urlsafe_b64encode(encrypted_keys),
+        "IV": base64.urlsafe_b64encode(iv),
+        "Tag": base64.urlsafe_b64encode(tag),
+        "Msg": base64.urlsafe_b64encode(ciphertext)
     }
 
     return json.dumps(out)
@@ -112,10 +112,10 @@ def decrypt(ciphertext, keydata):
 
     # Decode the base64 encoded JSON object values
     struct = json.loads(ciphertext)
-    encrypted_keys = struct["Key"].decode("base64")
-    tag = struct["Tag"].decode("base64")
-    iv = struct["IV"].decode("base64")
-    ciphertext = struct["Msg"].decode("base64")
+    encrypted_keys = base64.urlsafe_b64decode(struct["Key"])
+    tag = base64.urlsafe_b64decode(struct["Tag"])
+    iv = base64.urlsafe_b64decode(struct["IV"])
+    ciphertext = base64.urlsafe_b64decode(struct["Msg"])
 
     # Decrypt and extract the encrypted AES and HMAC keys
     keys = privkey.decrypt(
@@ -154,11 +154,10 @@ if __name__ == "__main__":
     keypath = sys.argv[2]
     mode = sys.argv[3]
     keyfile = open(keypath, "rb")
-    keydata = keyfile.read() 
+    keydata = keyfile.read()
     keyfile.close()
 
     if mode == "d":
         print(decrypt(plaintext, keydata))
     else:
         print(encrypt(plaintext, keydata))
- 
