@@ -11,7 +11,7 @@ import threading
 import gi
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -71,8 +71,13 @@ def poll_messages(peer_name, jwt, win):
                 author = message['Username' ]
                 timestamp = message['Timestamp']
                 msg = message['Message']
-                win.show_message(msg, author, timestamp)
+                GLib.idle_add( win.show_message, msg, author, timestamp)
         time.sleep(2)
+
+def clean_exit(win):
+
+    win.destroy()
+    Gtk.main_quit()
 
 if __name__ == '__main__':
     jwt = False
@@ -86,42 +91,45 @@ if __name__ == '__main__':
     win.connect('destroy', Gtk.main_quit)
 
     login_dialog = gui.LoginDialog(win)
-    status = login_dialog.run()
-    if status == Gtk.ResponseType.OK:
-        user = login_dialog.user_entry.get_text()
-        passwd = login_dialog.passwd_entry.get_text()
+    while not jwt:
+        status = login_dialog.run()
+        if status == Gtk.ResponseType.OK:
+            user = login_dialog.user_entry.get_text()
+            passwd = login_dialog.passwd_entry.get_text()
 
-        jwt = login(user, passwd)
-        session = unwrap_jwt(jwt)
-        my_id = session['Uid']
-        my_name = user
+            jwt = login(user, passwd)
 
-        print(my_id)
-
-        login_dialog.destroy()
-    else:
-        sys.exit(0)
+            if jwt:
+                session = unwrap_jwt(jwt)
+                my_id = session['Uid']
+                my_name = user
+                login_dialog.destroy()
+        else:
+            sys.exit(0)
 
     peer_dialog = gui.PeerDialog(win)
-    status = peer_dialog.run()
-    if status == Gtk.ResponseType.OK:
-        user = peer_dialog.user_entry.get_text()
+    while not peer_id:
+        status = peer_dialog.run()
+        if status == Gtk.ResponseType.OK:
+            user = peer_dialog.user_entry.get_text()
 
-        peer_id = lookup_user(user)
-        peer_name = user
+            peer_id = lookup_user(user)
 
-        print(peer_id)
-        print(peer_name)
+            if peer_id:
+                peer_name = user
+                win.set_title('Chatting with %s' % peer_name)
+                peer_dialog.destroy()
+        else:
+            sys.exit(0)
 
-        peer_dialog.destroy()
-    else:
-        sys.exit(0)
+    win.show_all()
 
     poller = threading.Thread(
         group = None,
         target = poll_messages,
         name = 'poller',
         args = (peer_name, jwt, win))
+    poller.daemon = True
     poller.start()
 
     win.cb = lambda txt: send_message(txt, peer_name, jwt)
