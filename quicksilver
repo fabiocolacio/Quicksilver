@@ -18,6 +18,10 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 host = 'https://localhost:9090'
 
+app_folder = os.environ['HOME'] + '/.config/quicksilver/'
+priv_folder = app_folder + 'priv/'
+pub_folder = app_folder + 'pub/'
+
 def login(user, passwd):
     creds = json.dumps({
         'Username': user,
@@ -84,8 +88,13 @@ if __name__ == '__main__':
     session = False
     my_id = False
     my_name = False
+    my_privkey = False
     peer_id = False
     peer_name = False
+    peer_pubkey = False
+
+    if os.system('stat ' + app_folder) != 0:
+        os.system('mkdir -p ' + app_folder)
 
     win = gui.ChatWindow()
     win.connect('destroy', Gtk.main_quit)
@@ -104,6 +113,18 @@ if __name__ == '__main__':
                 my_id = session['Uid']
                 my_name = user
                 login_dialog.destroy()
+
+                privkey = '%s%s%s' % (priv_folder, my_name, '.pem')
+                pubkey = '%s%s%s' %  (pub_folder, my_name, '.pem')
+                if os.system('stat ' + privkey) != 0:
+                    os.system('mkdir -p ' + priv_folder)
+                    os.system('mkdir -p ' + pub_folder)
+                    os.system('openssl genrsa -out ' + privkey + ' 2048')
+                    os.system('openssl rsa -in ' + privkey + ' -pubout -out ' + pubkey)
+
+                fh = open(privkey, 'rb')
+                my_privkey = fh.read()
+                fh.close()
         else:
             sys.exit(0)
 
@@ -113,12 +134,30 @@ if __name__ == '__main__':
         if status == Gtk.ResponseType.OK:
             user = peer_dialog.user_entry.get_text()
 
-            peer_id = lookup_user(user)
+            peer_id = int(lookup_user(user))
 
             if peer_id:
                 peer_name = user
                 win.set_title('Chatting with %s' % peer_name)
                 peer_dialog.destroy()
+
+                pubkey = '%s%s%s' %  (pub_folder, peer_name, '.pem')
+                if os.system('stat ' + pubkey) != 0:
+
+                    fc = Gtk.FileChooserDialog()
+                    fc.set_transient_for(win)
+                    fc.set_modal(True)
+                    fc.add_buttons(
+                        'Open', Gtk.ResponseType.OK,
+                        'Cancel', Gtk.ResponseType.CLOSE)
+                    status = fc.run()
+                    if status == Gtk.ResponseType.OK:
+                        file = fc.get_filename()
+                        os.system('mkdir -p ' + pub_folder)
+                        os.system('cp ' + file + ' ' + pubkey)
+                        fc.destroy()
+                    else:
+                        sys.exit(0)
         else:
             sys.exit(0)
 
