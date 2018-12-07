@@ -1,5 +1,6 @@
 // This file was written by the tokenizer team at
-// https://github.com/go-web/tokenizer and included for use in Quicksilver.
+// https://github.com/go-web/tokenizer and included for use in Quicksilver
+// with minor modifications.
 //
 // =========================================================================
 //
@@ -55,7 +56,7 @@ var (
 // pkcs7Pad right-pads the given byte slice with 1 to n bytes, where
 // n is the block size. The size of the result is x times n, where x
 // is at least 1.
-func pkcs7Pad(b []byte, blocksize int) ([]byte, error) {
+func PKCS7Pad(b []byte, blocksize int) ([]byte, error) {
 	if blocksize <= 0 {
 		return nil, ErrInvalidBlockSize
 	}
@@ -72,7 +73,7 @@ func pkcs7Pad(b []byte, blocksize int) ([]byte, error) {
 // pkcs7Unpad validates and unpads data from the given bytes slice.
 // The returned value will be 1 to n bytes smaller depending on the
 // amount of padding, where n is the block size.
-func pkcs7Unpad(b []byte, blocksize int) ([]byte, error) {
+func PKCS7Unpad(b []byte, blocksize int) ([]byte, error) {
 	if blocksize <= 0 {
 		return nil, ErrInvalidBlockSize
 	}

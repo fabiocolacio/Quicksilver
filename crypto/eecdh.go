@@ -64,7 +64,7 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
     }
 
     // Add PKCS7 padding to clearText
-    paddedClearText, err := pkcs7Pad(clearText, aes.BlockSize)
+    paddedClearText, err := PKCS7Pad(clearText, aes.BlockSize)
     if err != nil {
         return nil, err
     }
@@ -154,7 +154,7 @@ func (message *EncryptedMessage) Decrypt(priv []byte, sender bool) ([]byte, erro
     // Decrypt and unpad the payload
     cbc = cipher.NewCBCDecrypter(aesCipher, message.IV)
     cbc.CryptBlocks(message.Msg, message.Msg)
-    msg, err := pkcs7Unpad(message.Msg, aes.BlockSize)
+    msg, err := PKCS7Unpad(message.Msg, aes.BlockSize)
     if err != nil {
         return nil, err
     }
