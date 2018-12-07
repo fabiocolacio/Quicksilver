@@ -27,6 +27,28 @@ func SetHost(newHost string) {
     host = newHost
 }
 
+func Register(user, passwd string) error {
+    creds := map[string]string{
+        "Username": user,
+        "Password": passwd,
+    }
+
+    payload, err := json.Marshal(creds)
+    if err != nil {
+        return err
+    }
+
+    res, err := client.Post(host + "/register", "text/javascript", bytes.NewBuffer(payload))
+    if err != nil {
+        return err
+    }
+    if res.StatusCode != 200 {
+        return ErrLoginFailed
+    }
+
+    return nil
+}
+
 func Login(user, passwd string) ([]byte, error) {
     creds := map[string]string{
         "Username": user,
@@ -42,6 +64,10 @@ func Login(user, passwd string) ([]byte, error) {
     if err != nil {
         return nil, err
     }
+    if res.StatusCode != 200 {
+        return nil, ErrLoginFailed
+    }
+
     defer res.Body.Close()
     jwt, err := ioutil.ReadAll(res.Body)
     if err != nil {

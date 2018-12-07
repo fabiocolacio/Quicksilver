@@ -69,8 +69,9 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
         return nil, err
     }
 
-    // Create buffer for ciphertext
+    // Create buffers for ciphertexts
     cipherText := make([]byte, len(paddedClearText))
+    encryptedKey := make([]byte, len(hmacKey))
 
     // Create AES block cipher
     aesCipher, err := aes.NewCipher(aesKey)
@@ -88,10 +89,16 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
     cbc := cipher.NewCBCEncrypter(aesCipher, iv)
     cbc.CryptBlocks(cipherText, paddedClearText)
 
+    // Encrypt hmac key with CBC block encrypter
+    cbc = cipher.NewCBCEncrypter(aesCipher, iv)
+    cbc.CryptBlocks(encryptedKey, hmacKey)
+
     // Generate MAC tag for data
     mac := hmac.New(secureHash, hmacKey)
     mac.Write(cipherText)
     tag := mac.Sum(nil)
+
+    fmt.Println("hmac key", hmacKey)
 
     msg = &EncryptedMessage{
         Ax: ax.Bytes(),
@@ -101,6 +108,7 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
         IV: iv,
         Msg: cipherText,
         Tag: tag,
+        Key: encryptedKey,
     }
 
     return msg, err
@@ -131,17 +139,20 @@ func (message *EncryptedMessage) Decrypt(priv []byte, sender bool) ([]byte, erro
         return nil, err
     }
 
-    // // Decrypt HMAC Key
-    // cbc := cipher.NewCBCDecrypter(aesCipher, message.IV)
-    // cbc.CryptBlocks(message.Key, message.Key)
+    fmt.Println("hmac key", message.Key)
 
-    // // Compare MAC tags
-    // if !CheckMAC(message.Msg, message.Tag, message.Key) {
-    //     return nil, ErrUnexpectedMAC
-    // }
+    // Decrypt HMAC Key
+    cbc := cipher.NewCBCDecrypter(aesCipher, message.IV)
+    cbc.CryptBlocks(message.Key, message.Key)
+    fmt.Println("hmac key", message.Key)
+
+    // Compare MAC tags
+    if !CheckMAC(message.Msg, message.Tag, message.Key) {
+        return nil, ErrUnexpectedMAC
+    }
 
     // Decrypt and unpad the payload
-    cbc := cipher.NewCBCDecrypter(aesCipher, message.IV)
+    cbc = cipher.NewCBCDecrypter(aesCipher, message.IV)
     cbc.CryptBlocks(message.Msg, message.Msg)
     msg, err := pkcs7Unpad(message.Msg, aes.BlockSize)
     if err != nil {
