@@ -43,7 +43,7 @@ func ResetTables() error {
 
 func LookupPubKey(owner string) (pub []byte, err error) {
     row := db.QueryRow(
-        `SELECT priv
+        `SELECT pub
          FROM dh
          WHERE owner = ?
          ORDER BY id DESC`,
@@ -62,7 +62,11 @@ func LookupPrivKey(owner string, pub []byte) (priv []byte, err error) {
     return
 }
 
-func UploadKey(owner int, pub, priv []byte) error {
-    _, err := db.Exec(`INSERT INTO keys (owner, pub, priv) VALUES (?, ?, ?)`, owner, pub, priv)
+func UploadKey(owner string, pub, priv []byte) error {
+    if priv != nil {
+        _, err := db.Exec(`INSERT INTO dh (owner, pub, priv) VALUES (?, ?, ?)`, owner, pub, priv)
+        return err
+    }
+    _, err := db.Exec(`INSERT INTO dh (owner, pub) VALUES (?, ?)`, owner, pub)
     return err
 }

@@ -6,7 +6,9 @@ import(
     "crypto/elliptic"
     "crypto/rand"
     "math/big"
-    // "os"
+    "database/sql"
+    "os"
+    "io/ioutil"
     "encoding/json"
     "log"
     "time"
@@ -62,25 +64,55 @@ func main() {
         peerY   *big.Int
     )
 
-    if peerKey, err := db.LookupPubKey(peer); err != nil {
+    myPriv, myX, myY, err = elliptic.GenerateKey(crypto.Curve, rand.Reader)
+    if err != nil {
         log.Fatal(err)
-    } else {
-        peerX, peerY = elliptic.Unmarshal(crypto.Curve, peerKey)
-        if peerX == nil {
-            log.Fatal(err)
-        }
+    }
 
-        myPriv, myX, myY, err = elliptic.GenerateKey(crypto.Curve, rand.Reader)
+    peerKey, err := db.LookupPubKey(peer)
+    if err == sql.ErrNoRows {
+        outfile := os.Getenv("HOME") + "/" + user + ".ecdh"
+        myPub := elliptic.Marshal(crypto.Curve, myX, myY)
+        err = ioutil.WriteFile(outfile, myPub, 0666)
         if err != nil {
             log.Fatal(err)
         }
+
+        title := "Choose " + peer + "'s public key."
+        fc, err := gtk.FileChooserDialogNewWith2Buttons(
+            title,
+            ui.Window,
+            gtk.FILE_CHOOSER_ACTION_OPEN,
+            "Open", gtk.RESPONSE_OK,
+            "Cancel", gtk.RESPONSE_CLOSE)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        if fc.Run() == gtk.RESPONSE_OK {
+            file := fc.GetFilename()
+            fc.Destroy()
+
+            peerKey, err = ioutil.ReadFile(file)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            err = db.UploadKey(peer, peerKey, nil)
+            if err != nil {
+                log.Fatal(err)
+            }
+        } else {
+            log.Fatal("No public key was selected.")
+        }
+    } else if err != nil {
+        log.Fatal(err)
     }
 
-
-    // priv, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
+    peerX, peerY = elliptic.Unmarshal(crypto.Curve, peerKey)
+    if peerX == nil {
+        log.Fatal("Invalid key data")
+    }
 
     go MessagePoll(jwt, peer, ui)
 
@@ -98,6 +130,11 @@ func main() {
         err = api.MessageSend(jwt, peer, string(payload))
         if err != nil {
             log.Println(err)
+        }
+
+        myPriv, myX, myY, err = elliptic.GenerateKey(crypto.Curve, rand.Reader)
+        if err != nil {
+            log.Fatal(err)
         }
     }
 
