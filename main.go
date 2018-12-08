@@ -37,6 +37,13 @@ func main() {
 
     log.Println(sess.Uid)
 
+    peer, err := gui.PeerDialogRun(ui.Window)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println(peer)
+
     _, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
     if err != nil {
         log.Fatal(err)
