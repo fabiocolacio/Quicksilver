@@ -2,21 +2,23 @@ package main
 
 import(
     // "fmt"
-    // "github.com/fabiocolacio/quicksilver/crypto"
-    // "crypto/elliptic"
-    // "crypto/rand"
-    "os"
+    "github.com/fabiocolacio/quicksilver/crypto"
+    "crypto/elliptic"
+    "crypto/rand"
+    "math/big"
+    // "os"
+    "encoding/json"
     "log"
     "time"
     "github.com/fabiocolacio/quicksilver/gui"
+    "github.com/fabiocolacio/quicksilver/db"
     "github.com/fabiocolacio/quicksilver/api"
     "github.com/gotk3/gotk3/gtk"
     "github.com/gotk3/gotk3/glib"
 )
 
 func main() {
-    config := os.Getenv("HOME") + "/.config/quicksilver"
-    err := os.MkdirAll(config, 0666)
+    err := db.InitTables()
     if err != nil {
         log.Fatal(err)
     }
@@ -52,15 +54,48 @@ func main() {
         log.Fatal(err)
     }
 
+    var(
+        myPriv   []byte
+        myX     *big.Int
+        myY     *big.Int
+        peerX   *big.Int
+        peerY   *big.Int
+    )
+
+    if peerKey, err := db.LookupPubKey(peer); err != nil {
+        log.Fatal(err)
+    } else {
+        peerX, peerY = elliptic.Unmarshal(crypto.Curve, peerKey)
+        if peerX == nil {
+            log.Fatal(err)
+        }
+
+        myPriv, myX, myY, err = elliptic.GenerateKey(crypto.Curve, rand.Reader)
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+
+
     // priv, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
     // if err != nil {
     //     log.Fatal(err)
     // }
 
     go MessagePoll(jwt, peer, ui)
-    
+
     ui.Callback = func(msg string) {
-        err := api.MessageSend(jwt, peer, msg)
+        c, err := crypto.EncryptMessage([]byte(msg), myPriv, myX, myY, peerX, peerY)
+        if err != nil {
+            log.Println(err)
+        }
+
+        payload, err := json.Marshal(c)
+        if err != nil {
+            log.Println(err)
+        }
+
+        err = api.MessageSend(jwt, peer, string(payload))
         if err != nil {
             log.Println(err)
         }

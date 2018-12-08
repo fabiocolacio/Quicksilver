@@ -1,6 +1,7 @@
 package db
 
 import(
+    "fmt"
     "log"
     "database/sql"
     _ "github.com/go-sql-driver/mysql"
@@ -13,14 +14,15 @@ var (
 func init() {
     source := fmt.Sprintf("%s:%s@/%s", "root", "", "quicksilver")
 
-	db, err := sql.Open("mysql", source)
+    var err error
+	db, err = sql.Open("mysql", source)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func InitTables() error {
-    _, err := db.Exec(`CREATE TABLE keys(
+    _, err := db.Exec(`CREATE TABLE IF NOT EXISTS dh(
         id INT PRIMARY KEY AUTO_INCREMENT,
         owner VARCHAR(16),
         pub BLOB,
@@ -31,7 +33,7 @@ func InitTables() error {
 }
 
 func ResetTables() error {
-    _, err := db.Exec("DROP TABLE IF EXISTS keys")
+    _, err := db.Exec("DROP TABLE IF EXISTS dh")
     if err != nil {
         return err
     }
@@ -39,28 +41,28 @@ func ResetTables() error {
     return InitTables()
 }
 
-func LookupPubKey(owner string) (pub []bytes, err error) {
+func LookupPubKey(owner string) (pub []byte, err error) {
     row := db.QueryRow(
         `SELECT priv
-         FROM keys
+         FROM dh
          WHERE owner = ?
          ORDER BY id DESC`,
-        string, pub)
+        owner)
     err = row.Scan(&pub)
     return
 }
 
-func LookupPrivKey(owner string, pub []bytes) (priv []bytes, err error) {
+func LookupPrivKey(owner string, pub []byte) (priv []byte, err error) {
     row := db.QueryRow(
         `SELECT priv
-         FROM keys
+         FROM dh
          WHERE owner = ? AND pub = ?`,
-        string, pub)
+        owner, pub)
     err = row.Scan(&priv)
     return
 }
 
-func UploadKey(owner int, pub, priv []bytes) error {
+func UploadKey(owner int, pub, priv []byte) error {
     _, err := db.Exec(`INSERT INTO keys (owner, pub, priv) VALUES (?, ?, ?)`, owner, pub, priv)
     return err
 }
