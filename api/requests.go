@@ -8,6 +8,7 @@ import(
     "io/ioutil"
     "crypto/tls"
     "net/url"
+    "github.com/fabiocolacio/quicksilver/crypto"
 )
 
 var(
@@ -25,7 +26,11 @@ var(
     }
 )
 
-type Message map[string]string
+type Message struct {
+    Username  string
+    Timestamp string
+    Message   crypto.EncryptedMessage
+}
 
 func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
     uri := host + "/get?peer=" + url.QueryEscape(peer)

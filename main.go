@@ -119,7 +119,7 @@ func main() {
         log.Fatal("Invalid key data")
     }
 
-    go MessagePoll(jwt, peer, ui)
+    go MessagePoll(jwt, user, peer, ui)
 
     ui.Callback = func(msg string) {
         c, err := crypto.EncryptMessage([]byte(msg), myPriv, myX, myY, peerX, peerY)
@@ -141,7 +141,7 @@ func main() {
         if err != nil {
             log.Fatal(err)
         }
-        
+
         myPub := elliptic.Marshal(crypto.Curve, myX, myY)
         err = db.UploadKey(user, myPub, myPriv)
         if err != nil {
@@ -152,7 +152,7 @@ func main() {
     gtk.Main()
 }
 
-func MessagePoll(jwt []byte, peer string, ui *gui.UI) {
+func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
     timestamp := ""
     for {
         messages, err := api.MessageFetch(jwt, peer, timestamp)
@@ -161,8 +161,39 @@ func MessagePoll(jwt []byte, peer string, ui *gui.UI) {
         } else {
             for i := 0; i < len(messages); i++ {
                 message := messages[i]
-                timestamp = message["Timestamp"]
-                glib.IdleAdd(ui.ShowMessage, message)
+                timestamp = message.Timestamp
+
+                sender := user == message.Username
+
+                x := new(big.Int)
+                y := new(big.Int)
+
+                if sender {
+                    x.SetBytes(message.Message.Ax)
+                    y.SetBytes(message.Message.Ay)
+                } else {
+                    x.SetBytes(message.Message.Bx)
+                    y.SetBytes(message.Message.By)
+                }
+
+                pubKey := elliptic.Marshal(crypto.Curve, x, y)
+
+                privKey, err := db.LookupPrivKey(user, pubKey)
+                if err != nil {
+                    log.Println(err)
+                }
+
+                clearText, err := message.Message.Decrypt(privKey, sender)
+                if err != nil {
+                    log.Println(err)
+                }
+
+                output := map[string]string{
+                    "Username": message.Username,
+                    "Timestamp": message.Timestamp,
+                    "Message": string(clearText),
+                }
+                glib.IdleAdd(ui.ShowMessage, output)
             }
         }
         time.Sleep(2 * time.Second)

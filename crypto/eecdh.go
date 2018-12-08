@@ -91,6 +91,7 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
     cbc = cipher.NewCBCEncrypter(aesCipher, iv)
     cbc.CryptBlocks(encryptedKey, hmacKey)
 
+
     // Generate MAC tag for data
     mac := hmac.New(secureHash, hmacKey)
     mac.Write(cipherText)
@@ -115,11 +116,11 @@ func (message *EncryptedMessage) Decrypt(priv []byte, sender bool) ([]byte, erro
     y := new(big.Int)
 
     if sender {
-        x.SetBytes(message.Ax)
-        y.SetBytes(message.Ay)
-    } else {
         x.SetBytes(message.Bx)
         y.SetBytes(message.By)
+    } else {
+        x.SetBytes(message.Ax)
+        y.SetBytes(message.Ay)
     }
 
     // Create shared secret xp from peer's public key and our private key
