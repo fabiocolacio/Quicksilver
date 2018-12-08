@@ -6,7 +6,6 @@ import(
     "github.com/fabiocolacio/mercury/server"
     "encoding/base64"
     "errors"
-    "fmt"
     "bytes"
 )
 
@@ -30,8 +29,6 @@ func UnwrapJWT(jwt []byte) (server.Session, error) {
         return sess, err
     }
     jsonObj = bytes.Trim(jsonObj, "\x00")
-
-    fmt.Println(string(jsonObj))
 
     err = json.Unmarshal(jsonObj, &sess)
     if err != nil {

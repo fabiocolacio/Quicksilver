@@ -77,7 +77,7 @@ func LoginDialogRun(parent *gtk.Window) (user string, passwd string, err error) 
         return user, passwd, err
     }
 
-    passwd, err = userEntry.GetText()
+    passwd, err = passwdEntry.GetText()
     if err != nil {
         return user, passwd, err
     }

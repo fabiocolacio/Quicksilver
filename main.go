@@ -2,13 +2,13 @@ package main
 
 import(
     // "fmt"
-    // "github.com/fabiocolacio/quicksilver/crypto"
-    // "crypto/elliptic"
-    // "crypto/rand"
+    "github.com/fabiocolacio/quicksilver/crypto"
+    "crypto/elliptic"
+    "crypto/rand"
     // "os"
     "log"
     "github.com/fabiocolacio/quicksilver/gui"
-    // "github.com/fabiocolacio/quicksilver/api"
+    "github.com/fabiocolacio/quicksilver/api"
     "github.com/gotk3/gotk3/gtk"
 )
 
@@ -25,7 +25,26 @@ func main() {
         log.Fatal(err)
     }
 
-    log.Println(user, passwd)
+    jwt, err := api.Login(user, passwd)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    sess, err := api.UnwrapJWT(jwt)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println(sess.Uid)
+
+    _, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println(x)
+    log.Println(y)
+    log.Println(string(elliptic.Marshal(crypto.Curve, x, y)))
 
     gtk.Main()
 }
