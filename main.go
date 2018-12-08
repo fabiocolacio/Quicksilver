@@ -10,6 +10,7 @@ import(
     "github.com/fabiocolacio/quicksilver/gui"
     "github.com/fabiocolacio/quicksilver/api"
     "github.com/gotk3/gotk3/gtk"
+    "github.com/gotk3/gotk3/glib"
 )
 
 func main() {
@@ -68,4 +69,22 @@ func main() {
     log.Println(string(elliptic.Marshal(crypto.Curve, x, y)))
 
     gtk.Main()
+}
+
+func MessagePoll(jwt []byte, peer string, ui *gui.UI) {
+    timestamp := ""
+    for {
+        messages, err := api.MessageFetch(jwt, peer, timestamp)
+        if err != nil {
+            log.Println(err)
+        } else {
+            for i := 0; i < len(messages); i++ {
+                message := messages[i]
+                author := message["Username"]
+                timestamp = message["Timestamp"]
+                msg := message["Message"]
+                glib.IdleAdd(ui.ShowMessage, msg, author, timestamp)
+            }
+        }
+    }
 }

@@ -24,7 +24,9 @@ var(
     }
 )
 
-func MessageFetch(jwt []byte, peer, since string) ([]map[string]string, error) {
+type Message map[string]string
+
+func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
     url := host + "/get?peer=" + peer + "&since=" + since
     request, err := http.NewRequest("GET", url, nil)
     if err != nil {
@@ -46,7 +48,7 @@ func MessageFetch(jwt []byte, peer, since string) ([]map[string]string, error) {
         return nil, errors.New(string(body))
     }
 
-    var messages []map[string]string
+    var messages []Message
     err = json.Unmarshal(body, &messages)
     if err != nil {
         return nil, err
