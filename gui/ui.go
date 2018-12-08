@@ -5,10 +5,10 @@ import(
 )
 
 type UI struct {
-    Window *gtk.Window
+    Window  *gtk.Window
 
     outText *gtk.TextView
-    inText *gtk.TextView
+    inText  *gtk.TextView
 }
 
 func UINew() (*UI, error) {
