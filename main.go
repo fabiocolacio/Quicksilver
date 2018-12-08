@@ -5,7 +5,7 @@ import(
     "github.com/fabiocolacio/quicksilver/crypto"
     "crypto/elliptic"
     "crypto/rand"
-    // "os"
+    "os"
     "log"
     "github.com/fabiocolacio/quicksilver/gui"
     "github.com/fabiocolacio/quicksilver/api"
@@ -13,6 +13,12 @@ import(
 )
 
 func main() {
+    config := os.Getenv("HOME") + "/.config/quicksilver"
+    err := os.MkdirAll(config, 0666)
+    if err != nil {
+        log.Fatal(err)
+    }
+
     gtk.Init(nil)
 
     ui, err := gui.UINew()
@@ -47,6 +53,14 @@ func main() {
     _, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
     if err != nil {
         log.Fatal(err)
+    }
+
+    peerDir := config + "/" + peer
+    if _, err = os.Stat(peerDir); err != nil {
+        err = os.MkdirAll(peerDir, 0666)
+        if err != nil {
+            log.Fatal(err)
+        }
     }
 
     log.Println(x)
