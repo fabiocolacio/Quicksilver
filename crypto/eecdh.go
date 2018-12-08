@@ -10,7 +10,6 @@ import(
     "golang.org/x/crypto/pbkdf2"
     "errors"
     "math/big"
-    "fmt"
 )
 
 const(
@@ -55,7 +54,6 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
 
     // Derive an AES key from our shared secret
     aesKey := DeriveKey(xp.Bytes(), aesKeySize)
-    fmt.Println(aesKey)
 
     // Create a random HMAC key
     hmacKey := make([]byte, hmacKeySize)
@@ -98,8 +96,6 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
     mac.Write(cipherText)
     tag := mac.Sum(nil)
 
-    fmt.Println("hmac key", hmacKey)
-
     msg = &EncryptedMessage{
         Ax: ax.Bytes(),
         Ay: ay.Bytes(),
@@ -131,7 +127,6 @@ func (message *EncryptedMessage) Decrypt(priv []byte, sender bool) ([]byte, erro
 
     // Derive an AES key from our shared secret
     aesKey := DeriveKey(xp.Bytes(), aesKeySize)
-    fmt.Println(aesKey)
 
     // Create AES block cipher
     aesCipher, err := aes.NewCipher(aesKey)
@@ -139,12 +134,9 @@ func (message *EncryptedMessage) Decrypt(priv []byte, sender bool) ([]byte, erro
         return nil, err
     }
 
-    fmt.Println("hmac key", message.Key)
-
     // Decrypt HMAC Key
     cbc := cipher.NewCBCDecrypter(aesCipher, message.IV)
     cbc.CryptBlocks(message.Key, message.Key)
-    fmt.Println("hmac key", message.Key)
 
     // Compare MAC tags
     if !CheckMAC(message.Msg, message.Tag, message.Key) {
