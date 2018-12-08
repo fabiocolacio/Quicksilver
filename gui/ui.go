@@ -2,16 +2,23 @@ package gui
 
 import(
     "github.com/gotk3/gotk3/gtk"
+    "github.com/gotk3/gotk3/gdk"
+    "fmt"
+    "log"
 )
 
 type UI struct {
     Window  *gtk.Window
+    Callback func(msg string)
 
+    buffer  *gtk.TextBuffer
     outText *gtk.TextView
     inText  *gtk.TextView
 }
 
 func UINew() (*UI, error) {
+    ui := new(UI)
+
     win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
     if err != nil {
         return nil, err
@@ -57,6 +64,7 @@ func UINew() (*UI, error) {
     outgoing.SetSizeRequest(0, 20)
     outgoing.SetAcceptsTab(false)
     outgoing.SetWrapMode(gtk.WRAP_NONE)
+    outgoing.Connect("key-press-event", keyPressed, ui)
 
     botScroll, err := gtk.ScrolledWindowNew(nil, nil)
     if err != nil {
@@ -67,9 +75,44 @@ func UINew() (*UI, error) {
     botScroll.Add(outgoing)
     vbox.PackStart(botScroll, false, false, 0)
 
-    ui := &UI{
-        Window: win,
-    }
+    win.ShowAll()
+
+    ui.Window = win
+    ui.buffer = txtBuffer
+    ui.outText = outgoing
+    ui.inText = incoming
 
     return ui, err
+}
+
+func (ui *UI) ShowMessage(text, author, time string) {
+    iter := ui.buffer.GetEndIter()
+    txt := fmt.Sprintf("[%s] %s: %s\n", time, author, text)
+    ui.buffer.Insert(iter, txt)
+}
+
+func keyPressed(textView *gtk.TextView, event *gdk.Event, ui *UI) bool {
+    keyEvent := gdk.EventKeyNewFromEvent(event)
+    if keyEvent.KeyVal() == gdk.KEY_Return {
+        buf, err := textView.GetBuffer()
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        start := buf.GetStartIter()
+        end := buf.GetEndIter()
+        txt, err := buf.GetText(start, end, false)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        if ui.Callback != nil {
+            ui.Callback(txt)
+        }
+
+        buf.SetText("")
+
+        return true
+    }
+    return false
 }
