@@ -85,9 +85,13 @@ func UINew() (*UI, error) {
     return ui, err
 }
 
-func (ui *UI) ShowMessage(text, author, time string) {
+func (ui *UI) ShowMessage(message map[string]string) {
+    author := message["Username"]
+    timestamp := message["Timestamp"]
+    msg := message["Message"]
+
     iter := ui.buffer.GetEndIter()
-    txt := fmt.Sprintf("[%s] %s: %s\n", time, author, text)
+    txt := fmt.Sprintf("[%s] %s: %s\n", timestamp, author, msg)
     ui.buffer.Insert(iter, txt)
 }
 

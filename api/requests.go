@@ -7,6 +7,8 @@ import(
     "bytes"
     "io/ioutil"
     "crypto/tls"
+    "net/url"
+    "log"
 )
 
 var(
@@ -27,8 +29,13 @@ var(
 type Message map[string]string
 
 func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
-    url := host + "/get?peer=" + peer + "&since=" + since
-    request, err := http.NewRequest("GET", url, nil)
+    uri := host + "/get?peer=" + url.QueryEscape(peer)
+
+    if len(since) > 0 {
+        uri = uri + "&since=" + url.QueryEscape(since)
+    }
+
+    request, err := http.NewRequest("GET", uri, nil)
     if err != nil {
         return nil, err
     }
@@ -55,6 +62,31 @@ func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
     }
 
     return messages, err
+}
+
+func MessageSend(jwt []byte, peer, message string) error {
+    uri := host + "/send?to=" + url.QueryEscape(peer)
+    request, err := http.NewRequest("POST", uri, bytes.NewBuffer([]byte(message)))
+    if err != nil {
+        return err
+    }
+    request.Header.Set("Session", string(jwt))
+    res, err := client.Do(request)
+    if err != nil {
+        return err
+    }
+
+    defer res.Body.Close()
+    body, err := ioutil.ReadAll(res.Body)
+    if err != nil {
+        return err
+    }
+
+    if res.StatusCode != 200 {
+        return errors.New(string(body))
+    }
+
+    return nil
 }
 
 func SetHost(newHost string) {

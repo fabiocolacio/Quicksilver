@@ -2,11 +2,12 @@ package main
 
 import(
     // "fmt"
-    "github.com/fabiocolacio/quicksilver/crypto"
-    "crypto/elliptic"
-    "crypto/rand"
+    // "github.com/fabiocolacio/quicksilver/crypto"
+    // "crypto/elliptic"
+    // "crypto/rand"
     "os"
     "log"
+    "time"
     "github.com/fabiocolacio/quicksilver/gui"
     "github.com/fabiocolacio/quicksilver/api"
     "github.com/gotk3/gotk3/gtk"
@@ -37,36 +38,32 @@ func main() {
         log.Fatal(err)
     }
 
-    sess, err := api.UnwrapJWT(jwt)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    log.Println(sess.Uid)
+    // sess, err := api.UnwrapJWT(jwt)
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
 
     peer, err := gui.PeerDialogRun(ui.Window)
     if err != nil {
         log.Fatal(err)
     }
 
-    log.Println(peer)
-
-    _, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
-    if err != nil {
+    if err = api.LookupUser(peer); err != nil {
         log.Fatal(err)
     }
 
-    peerDir := config + "/" + peer
-    if _, err = os.Stat(peerDir); err != nil {
-        err = os.MkdirAll(peerDir, 0666)
+    // priv, x, y, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+
+    go MessagePoll(jwt, peer, ui)
+    ui.Callback = func(msg string) {
+        err := api.MessageSend(jwt, peer, msg)
         if err != nil {
-            log.Fatal(err)
+            log.Println(err)
         }
     }
-
-    log.Println(x)
-    log.Println(y)
-    log.Println(string(elliptic.Marshal(crypto.Curve, x, y)))
 
     gtk.Main()
 }
@@ -80,11 +77,10 @@ func MessagePoll(jwt []byte, peer string, ui *gui.UI) {
         } else {
             for i := 0; i < len(messages); i++ {
                 message := messages[i]
-                author := message["Username"]
                 timestamp = message["Timestamp"]
-                msg := message["Message"]
-                glib.IdleAdd(ui.ShowMessage, msg, author, timestamp)
+                glib.IdleAdd(ui.ShowMessage, message)
             }
         }
+        time.Sleep(2 * time.Second)
     }
 }
