@@ -13,6 +13,7 @@ var(
     host = "https://localhost:9090"
 
     ErrLoginFailed = errors.New("Login failed.")
+    ErrNoSuchUser = errors.New("No such user.")
 
     client = &http.Client{
         Transport: &http.Transport{
@@ -25,6 +26,19 @@ var(
 
 func SetHost(newHost string) {
     host = newHost
+}
+
+func LookupUser(user string) error {
+    res, err := client.Get(host + "/lookup?user" + user)
+    if err != nil {
+        return err
+    }
+
+    if res.StatusCode != 200{
+        return ErrNoSuchUser
+    }
+
+    return nil
 }
 
 func Register(user, passwd string) error {
