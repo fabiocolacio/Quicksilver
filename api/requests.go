@@ -8,7 +8,6 @@ import(
     "io/ioutil"
     "crypto/tls"
     "net/url"
-    "log"
 )
 
 var(

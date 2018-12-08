@@ -21,7 +21,8 @@ func init() {
 
 func InitTables() error {
     _, err := db.Exec(`CREATE TABLE keys(
-        owner INT,
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        owner VARCHAR(16),
         pub BLOB,
         priv BLOB
         );`)
@@ -38,12 +39,23 @@ func ResetTables() error {
     return InitTables()
 }
 
-func LookupKey(owner int, pub []bytes) (priv []bytes, err error) {
+func LookupPubKey(owner string) (pub []bytes, err error) {
+    row := db.QueryRow(
+        `SELECT priv
+         FROM keys
+         WHERE owner = ?
+         ORDER BY id DESC`,
+        string, pub)
+    err = row.Scan(&pub)
+    return
+}
+
+func LookupPrivKey(owner string, pub []bytes) (priv []bytes, err error) {
     row := db.QueryRow(
         `SELECT priv
          FROM keys
          WHERE owner = ? AND pub = ?`,
-        owner, pub)
+        string, pub)
     err = row.Scan(&priv)
     return
 }

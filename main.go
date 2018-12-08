@@ -58,6 +58,7 @@ func main() {
     // }
 
     go MessagePoll(jwt, peer, ui)
+    
     ui.Callback = func(msg string) {
         err := api.MessageSend(jwt, peer, msg)
         if err != nil {
