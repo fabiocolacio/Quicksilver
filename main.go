@@ -12,6 +12,7 @@ import(
     "encoding/json"
     "log"
     "time"
+    "sync"
     "github.com/fabiocolacio/quicksilver/gui"
     "github.com/fabiocolacio/quicksilver/db"
     "github.com/fabiocolacio/quicksilver/api"
@@ -116,10 +117,14 @@ func main() {
         log.Fatal("Invalid key data")
     }
 
-    go MessagePoll(jwt, user, peer, ui)
+    mux := new(sync.Mutex)
+    go MessagePoll(jwt, user, peer, peerX, peerY, mux, ui)
 
     ui.Callback = func(msg string) {
+        mux.Lock()
         c, err := crypto.EncryptMessage([]byte(msg), myPriv, myX, myY, peerX, peerY)
+        mux.Unlock()
+
         if err != nil {
             log.Println(err)
         }
@@ -149,7 +154,7 @@ func main() {
     gtk.Main()
 }
 
-func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
+func MessagePoll(jwt []byte, user, peer string, px, py *big.Int, mux *sync.Mutex, ui *gui.UI) {
     timestamp := ""
     for {
         messages, err := api.MessageFetch(jwt, peer, timestamp)
@@ -168,9 +173,19 @@ func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
                 if sender {
                     x.SetBytes(message.Message.Ax)
                     y.SetBytes(message.Message.Ay)
+
+                    mux.Lock()
+                    px.SetBytes(message.Message.Bx)
+                    py.SetBytes(message.Message.By)
+                    mux.Unlock()
                 } else {
                     x.SetBytes(message.Message.Bx)
                     y.SetBytes(message.Message.By)
+
+                    mux.Lock()
+                    px.SetBytes(message.Message.Ax)
+                    py.SetBytes(message.Message.Ay)
+                    mux.Unlock()
                 }
 
                 pubKey := elliptic.Marshal(crypto.Curve, x, y)
