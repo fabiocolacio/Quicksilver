@@ -42,11 +42,6 @@ func main() {
         log.Fatal(err)
     }
 
-    // sess, err := api.UnwrapJWT(jwt)
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
-
     peer, err := gui.PeerDialogRun(ui.Window)
     if err != nil {
         log.Fatal(err)
@@ -68,11 +63,11 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
+    myPub := elliptic.Marshal(crypto.Curve, myX, myY)
 
     peerKey, err := db.LookupPubKey(peer)
     if err == sql.ErrNoRows {
         outfile := os.Getenv("HOME") + "/" + user + ".ecdh"
-        myPub := elliptic.Marshal(crypto.Curve, myX, myY)
         err = ioutil.WriteFile(outfile, myPub, 0666)
         if err != nil {
             log.Fatal(err)
@@ -102,15 +97,15 @@ func main() {
             if err != nil {
                 log.Fatal(err)
             }
-
-            err = db.UploadKey(user, myPub, myPriv)
-            if err != nil {
-                log.Fatal(err)
-            }
         } else {
             log.Fatal("No public key was selected.")
         }
     } else if err != nil {
+        log.Fatal(err)
+    }
+
+    err = db.UploadKey(user, myPub, myPriv)
+    if err != nil {
         log.Fatal(err)
     }
 
@@ -200,6 +195,6 @@ func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
                 glib.IdleAdd(ui.ShowMessage, output)
             }
         }
-        time.Sleep(2 * time.Second)
+        time.Sleep(time.Second)
     }
 }
