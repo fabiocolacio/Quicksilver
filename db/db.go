@@ -22,18 +22,33 @@ func init() {
 }
 
 func InitTables() error {
-    _, err := db.Exec(`CREATE TABLE IF NOT EXISTS dh(
-        id INT PRIMARY KEY AUTO_INCREMENT,
+    _, err := db.Exec(`CREATE TABLE IF NOT EXISTS pubkeys(
+        id INT,
         owner VARCHAR(16),
-        pub BLOB,
-        priv BLOB
-        );`)
+        peer VARCHAR(16),
+        pubkey BLOB,
+        primary key (id, owner, peer));`)
+    if err != nil {
+        return err
+    }
+
+    _, err = db.Exec(`CREATE TABLE IF NOT EXISTS privkeys(
+        id INT,
+        owner VARCHAR(16),
+        peer VARCHAR(16),
+        privkey BLOB,
+        primary key (id, owner, peer));`)
 
     return err
 }
 
 func ResetTables() error {
-    _, err := db.Exec("DROP TABLE IF EXISTS dh")
+    _, err := db.Exec("DROP TABLE IF EXISTS pubkeys")
+    if err != nil {
+        return err
+    }
+
+    _, err = db.Exec("DROP TABLE IF EXISTS privkeys")
     if err != nil {
         return err
     }
@@ -41,32 +56,62 @@ func ResetTables() error {
     return InitTables()
 }
 
-func LookupPubKey(owner string) (pub []byte, err error) {
+func LookupPubKey(owner, peer string, id int) (pub []byte, err error) {
     row := db.QueryRow(
-        `SELECT pub
-         FROM dh
-         WHERE owner = ?
-         ORDER BY id DESC`,
-        owner)
+        `SELECT pubkey
+         FROM pubkeys
+         WHERE owner = ? AND peer = ? AND id = ?`,
+        owner, peer, id)
     err = row.Scan(&pub)
     return
 }
 
-func LookupPrivKey(owner string, pub []byte) (priv []byte, err error) {
+func LatestPubKey(owner, peer string) (id int) {
     row := db.QueryRow(
-        `SELECT priv
-         FROM dh
-         WHERE owner = ? AND pub = ? AND priv IS NOT NULL`,
-        owner, pub)
+        `SELECT id
+         FROM pubkeys
+         WHERE owner = ? AND peer = ?
+         ORDER BY id DESC`,
+        owner, peer)
+    err := row.Scan(&id)
+    if err != nil {
+        return 0
+    }
+    return id
+}
+
+
+func LookupPrivKey(owner, peer string, id int) (priv []byte, err error) {
+    row := db.QueryRow(
+        `SELECT privkey
+         FROM privkeys
+         WHERE owner = ? AND peer = ? AND id = ?
+         ORDER BY id DESC`,
+        owner, peer, id)
     err = row.Scan(&priv)
     return
 }
 
-func UploadKey(owner string, pub, priv []byte) error {
-    if priv != nil {
-        _, err := db.Exec(`INSERT INTO dh (owner, pub, priv) VALUES (?, ?, ?)`, owner, pub, priv)
-        return err
+func LatestPrivKey(owner, peer string) (id int) {
+    row := db.QueryRow(
+        `SELECT id
+         FROM privkeys
+         WHERE owner = ? AND peer = ?
+         ORDER BY id DESC`,
+        owner, peer)
+    err := row.Scan(&id)
+    if err != nil {
+        return 0
     }
-    _, err := db.Exec(`INSERT INTO dh (owner, pub) VALUES (?, ?)`, owner, pub)
+    return id
+}
+
+func UploadPubKey(owner, peer string, pubkey []byte, id int) error {
+    _, err := db.Exec(`INSERT INTO pubkeys (id, owner, peer, pubkey) VALUES (?, ?, ?, ?)`, id, owner, peer, pubkey)
+    return err
+}
+
+func UploadPrivKey(owner, peer string, privkey []byte, id int) error {
+    _, err := db.Exec(`INSERT INTO privkeys (id, owner, peer, privkey) VALUES (?, ?, ?, ?)`, id, owner, peer, privkey)
     return err
 }
