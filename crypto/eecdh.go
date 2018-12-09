@@ -10,7 +10,6 @@ import(
     "golang.org/x/crypto/pbkdf2"
     "errors"
     "math/big"
-    "fmt"
 )
 
 const(
@@ -62,8 +61,6 @@ func EncryptMessage(clearText, aesKey, nxt []byte, sid, rid int) (msg *Encrypted
     if _, err := rand.Read(hmacKey); err != nil {
         return nil, err
     }
-
-    fmt.Println(nxt)
 
     // Add PKCS7 padding to clearText
     paddedClearText, err := PKCS7Pad(clearText, aes.BlockSize)
@@ -156,8 +153,6 @@ func (message *EncryptedMessage) Decrypt(aesKey []byte) (clearText, nextKey []by
     if err != nil {
         return
     }
-
-    fmt.Println(nxt)
 
     return msg, nxt, err
 }

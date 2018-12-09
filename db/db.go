@@ -107,11 +107,17 @@ func LatestPrivKey(owner, peer string) (id int) {
 }
 
 func UploadPubKey(owner, peer string, pubkey []byte, id int) error {
+    if _, err := LookupPubKey(owner, peer, id); err == nil {
+        return nil
+    }
     _, err := db.Exec(`INSERT INTO pubkeys (id, owner, peer, pubkey) VALUES (?, ?, ?, ?)`, id, owner, peer, pubkey)
     return err
 }
 
 func UploadPrivKey(owner, peer string, privkey []byte, id int) error {
+    if _, err := LookupPrivKey(owner, peer, id); err == nil {
+        return nil
+    }
     _, err := db.Exec(`INSERT INTO privkeys (id, owner, peer, privkey) VALUES (?, ?, ?, ?)`, id, owner, peer, privkey)
     return err
 }
