@@ -51,6 +51,8 @@ func main() {
         log.Fatal(err)
     }
 
+    ui.Window.SetTitle("Quicksilver - Chatting with " + peer)
+
     var(
         myPriv   []byte
         myX     *big.Int

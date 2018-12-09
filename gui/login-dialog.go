@@ -59,6 +59,7 @@ func LoginDialogRun(parent *gtk.Window) (user string, passwd string, err error) 
     grid.Attach(label, 0, 1, 1, 1)
 
     passwdEntry, err := gtk.EntryNew()
+    passwdEntry.SetVisibility(false)
     if err != nil {
         return user, passwd, err
     }
