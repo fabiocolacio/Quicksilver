@@ -78,11 +78,6 @@ func main() {
             log.Fatal(err)
         }
 
-        err = db.UploadKey(user, myPub, myPriv)
-        if err != nil {
-            log.Fatal(err)
-        }
-
         title := "Choose " + peer + "'s public key."
         fc, err := gtk.FileChooserDialogNewWith2Buttons(
             title,
@@ -104,6 +99,11 @@ func main() {
             }
 
             err = db.UploadKey(peer, peerKey, nil)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            err = db.UploadKey(user, myPub, myPriv)
             if err != nil {
                 log.Fatal(err)
             }
@@ -177,6 +177,10 @@ func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
                 }
 
                 pubKey := elliptic.Marshal(crypto.Curve, x, y)
+
+                if pubKey == nil {
+                    log.Println("booty")
+                }
 
                 privKey, err := db.LookupPrivKey(user, pubKey)
                 if err != nil {

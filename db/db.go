@@ -56,7 +56,7 @@ func LookupPrivKey(owner string, pub []byte) (priv []byte, err error) {
     row := db.QueryRow(
         `SELECT priv
          FROM dh
-         WHERE owner = ? AND pub = ?`,
+         WHERE owner = ? AND pub = ? AND priv IS NOT NULL`,
         owner, pub)
     err = row.Scan(&priv)
     return

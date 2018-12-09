@@ -98,11 +98,11 @@ func EncryptMessage(clearText, priv []byte, ax, ay, bx, by *big.Int) (msg *Encry
     tag := mac.Sum(nil)
 
     msg = &EncryptedMessage{
-        Ax: ax.Bytes(),
-        Ay: ay.Bytes(),
-        Bx: bx.Bytes(),
-        By: by.Bytes(),
-        IV: iv,
+        Ax:  ax.Bytes(),
+        Ay:  ay.Bytes(),
+        Bx:  bx.Bytes(),
+        By:  by.Bytes(),
+        IV:  iv,
         Msg: cipherText,
         Tag: tag,
         Key: encryptedKey,
