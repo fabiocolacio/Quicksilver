@@ -102,7 +102,10 @@ func EncryptMessage(clearText, aesKey, nxt []byte, sid, rid int) (msg *Encrypted
 
     // Generate MAC tag for data
     mac := hmac.New(secureHash, hmacKey)
-    mac.Write(cipherText)
+    tmp := make([]byte, 0, len(cipherText) + len(encryptedNxt))
+    tmp = append(tmp, cipherText...)
+    tmp = append(tmp, encryptedNxt...)
+    mac.Write(tmp)
     tag := mac.Sum(nil)
 
     msg = &EncryptedMessage{
@@ -133,7 +136,10 @@ func (message *EncryptedMessage) Decrypt(aesKey []byte) (clearText, nextKey []by
     cbc.CryptBlocks(message.Key, message.Key)
 
     // Compare MAC tags
-    if !CheckMAC(message.Msg, message.Tag, message.Key) {
+    tmp := make([]byte, 0, len(message.Msg) + len(message.Nxt))
+    tmp = append(tmp, message.Msg...)
+    tmp = append(tmp, message.Nxt...)
+    if !CheckMAC(tmp, message.Tag, message.Key) {
         err = ErrUnexpectedMAC
         return
     }
