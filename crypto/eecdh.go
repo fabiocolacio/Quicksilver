@@ -45,7 +45,7 @@ func ECDH(priv []byte, x, y *big.Int) []byte {
     // Create shared secret xp from peer's public key and our private key
     xp, _ := Curve.ScalarMult(x, y, priv)
 
-    // Derive an AES key from our shared secret
+    // Derive an AES key (KDF) from our shared secret
     return DeriveKey(xp.Bytes(), aesKeySize)
 }
 

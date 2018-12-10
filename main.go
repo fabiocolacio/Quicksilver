@@ -1,18 +1,15 @@
 package main
 
 import(
-    // "fmt"
-    "github.com/fabiocolacio/quicksilver/crypto"
     "crypto/elliptic"
     "crypto/rand"
-    "math/big"
-    "database/sql"
-    "os"
     "io/ioutil"
     "encoding/json"
+    "database/sql"
+    "os"
     "log"
     "time"
-    "sync"
+    "github.com/fabiocolacio/quicksilver/crypto"
     "github.com/fabiocolacio/quicksilver/gui"
     "github.com/fabiocolacio/quicksilver/db"
     "github.com/fabiocolacio/quicksilver/api"
@@ -21,6 +18,7 @@ import(
 )
 
 func main() {
+    // Create database tables if they don't exist
     err := db.InitTables()
     if err != nil {
         log.Fatal(err)
@@ -28,58 +26,52 @@ func main() {
 
     gtk.Init(nil)
 
+    // Create UI
     ui, err := gui.UINew()
     if err != nil {
         log.Fatal(err)
     }
 
+    // Log the user in
     user, passwd, err := gui.LoginDialogRun(ui.Window)
     if err != nil {
         log.Fatal(err)
     }
-
     jwt, err := api.Login(user, passwd)
     if err != nil {
         log.Fatal(err)
     }
 
+    // Select a peer to speak with
     peer, err := gui.PeerDialogRun(ui.Window)
     if err != nil {
         log.Fatal(err)
     }
-
     if err = api.LookupUser(peer); err != nil {
         log.Fatal(err)
     }
-
     ui.Window.SetTitle("Quicksilver - Chatting with " + peer)
 
-    var(
-        s        int
-        r        int
-
-        myPriv   []byte
-        myX     *big.Int
-        myY     *big.Int
-    )
-
-    myPriv, myX, myY, err = elliptic.GenerateKey(crypto.Curve, rand.Reader)
+    // Generate first ECDH key pair
+    myPriv, myX, myY, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
     if err != nil {
         log.Fatal(err)
     }
     myPub := elliptic.Marshal(crypto.Curve, myX, myY)
 
+    // Check if We have a key for our peer already
     _, err = db.LookupPubKey(peer, user, 0)
-    if err == sql.ErrNoRows {
-        s = 0
-        r = 0
 
+    // If we don't have our peer's key, ask the user to select it
+    if err == sql.ErrNoRows {
+        // Create our diffie public key file to give to our peer
         outfile := os.Getenv("HOME") + "/" + user + ".ecdh"
         err = ioutil.WriteFile(outfile, myPub, 0666)
         if err != nil {
             log.Fatal(err)
         }
 
+        // Create File Chooser Dialog
         title := "Choose " + peer + "'s public key."
         fc, err := gtk.FileChooserDialogNewWith2Buttons(
             title,
@@ -91,16 +83,19 @@ func main() {
             log.Fatal(err)
         }
 
+        // Prompt user to choose peer's public key
         if fc.Run() == gtk.RESPONSE_OK {
             file := fc.GetFilename()
             fc.Destroy()
 
+            // Read the key data
             peerKey, err := ioutil.ReadFile(file)
             if err != nil {
                 log.Fatal(err)
             }
 
-            err = db.UploadPubKey(peer, user, peerKey, r)
+            // Store the key in the database
+            err = db.UploadPubKey(peer, user, peerKey, 0)
             if err != nil {
                 log.Fatal(err)
             }
@@ -111,29 +106,39 @@ func main() {
         log.Fatal(err)
     }
 
-    s = db.LatestPrivKey(user, peer)
-
-    err = db.UploadPrivKey(user, peer, myPriv, s)
+    // Store our private key in the database
+    err = db.UploadPrivKey(user, peer, myPriv, db.LatestPrivKey(user, peer))
     if err != nil {
         log.Fatal(err)
     }
 
-    mux := new(sync.Mutex)
-    go MessagePoll(jwt, user, peer, &s, &r, mux, ui)
+    // Poll for messages in parallel
+    go MessagePoll(jwt, user, peer, ui)
 
+    // Callback function for sending messages when the user pressed Enter
     ui.Callback = func(msg string) {
+        // Get peer's latest public key id
+        r := db.LatestPubKey(peer, user)
+        // Get our latest private key id
+        s := db.LatestPrivKey(user, peer)
+
+        // Generate the next ECDH key
         nxtPriv, nxtX, nxtY, err := elliptic.GenerateKey(crypto.Curve, rand.Reader)
         if err != nil {
             log.Fatal(err)
         }
         nxtPub := elliptic.Marshal(crypto.Curve, nxtX, nxtY)
+
+        // Store the private component for ourselves
         err = db.UploadPrivKey(user, peer, nxtPriv, s + 1)
         if err != nil {
             log.Fatal(err)
         }
 
+        // Get the peer's public key
         peerKey, err := db.LookupPubKey(peer, user, r)
         if err != nil {
+            log.Println("e")
             log.Fatal(err)
         }
         peerX, peerY := elliptic.Unmarshal(crypto.Curve, peerKey)
@@ -141,26 +146,29 @@ func main() {
             log.Fatal("Invalid key data")
         }
 
-        sessionKey := crypto.ECDH(myPriv, peerX, peerY)
+        // Get our latest private key
+        myKey, err := db.LookupPrivKey(user, peer, s)
         if err != nil {
+            log.Println("f")
             log.Fatal(err)
         }
 
-        mux.Lock()
-        c, err := crypto.EncryptMessage([]byte(msg), sessionKey, nxtPub, s, r)
-        s += 1
-        mux.Unlock()
-        myPriv = nxtPriv
+        // Perform ECDH to make session key
+        sessionKey := crypto.ECDH(myKey, peerX, peerY)
 
+        // Encrypt the message with the session key
+        c, err := crypto.EncryptMessage([]byte(msg), sessionKey, nxtPub, s, r)
         if err != nil {
             log.Println(err)
         }
 
+        // Convert the message into a JSON string
         payload, err := json.Marshal(c)
         if err != nil {
             log.Println(err)
         }
 
+        // Send the message to the server
         err = api.MessageSend(jwt, peer, string(payload))
         if err != nil {
             log.Println(err)
@@ -170,75 +178,81 @@ func main() {
     gtk.Main()
 }
 
-func MessagePoll(jwt []byte, user, peer string, s, r *int, mux *sync.Mutex, ui *gui.UI) {
+// MessagePoll polls the server for new messages, decrypts them as they come,
+// and shows them in the GUI. It also stores new public keys into the database.
+func MessagePoll(jwt []byte, user, peer string, ui *gui.UI) {
     timestamp := ""
     for {
+        // Get list of new messages
         messages, err := api.MessageFetch(jwt, peer, timestamp)
         if err != nil {
             log.Println(err)
         } else {
+            // Process each message in the list
             for i := 0; i < len(messages); i++ {
                 message := messages[i]
+
                 timestamp = message.Timestamp
 
+                // Check if we are the sender of the message
                 sender := user == message.Username
 
-                var sessionKey []byte
+                var(
+                    privId int // Our private key id to use
+                    pubId  int // Peer's public key id to use
+                )
+
+                // Fetch appropriate ECDH parameters
                 if sender {
-                    priv, err := db.LookupPrivKey(user, peer, message.Message.Sid)
-                    if err != nil {
-                        log.Fatal(err)
-                    }
-
-                    pub, err := db.LookupPubKey(peer, user, message.Message.Rid)
-                    if err != nil {
-                        log.Fatal(err)
-                    }
-
-                    x, y := elliptic.Unmarshal(crypto.Curve, pub)
-                    if x == nil {
-                        log.Fatal("Invalid public key.")
-                    }
-
-                    sessionKey = crypto.ECDH(priv, x, y)
+                    privId = message.Message.Sid
+                    pubId = message.Message.Rid
                 } else {
-                    priv, err := db.LookupPrivKey(user, peer, message.Message.Rid)
-                    if err != nil {
-                        log.Fatal(err)
-                    }
-
-                    pub, err := db.LookupPubKey(peer, user, message.Message.Sid)
-                    if err != nil {
-                        log.Fatal(err)
-                    }
-
-                    x, y := elliptic.Unmarshal(crypto.Curve, pub)
-                    if x == nil {
-                        log.Fatal("Invalid public key.")
-                    }
-
-                    sessionKey = crypto.ECDH(priv, x, y)
+                    privId = message.Message.Rid
+                    pubId = message.Message.Sid
+                }
+                priv, err := db.LookupPrivKey(user, peer, privId)
+                if err != nil {
+                    log.Println("a")
+                    log.Fatal(err)
+                }
+                pub, err := db.LookupPubKey(peer, user, pubId)
+                if err != nil {
+                    log.Println("b")
+                    log.Fatal(err)
+                }
+                x, y := elliptic.Unmarshal(crypto.Curve, pub)
+                if x == nil {
+                    log.Fatal("Invalid public key.")
                 }
 
+                // Perform ECDH to get session key
+                sessionKey := crypto.ECDH(priv, x, y)
+
+                // Decrypt message with session key
                 clearText, nextKey, err := message.Message.Decrypt(sessionKey)
                 if err != nil {
                     log.Println(err)
                 }
 
+                // If we are the receiver, store the next public key
                 if !sender {
-                    *r += 1
-                    db.UploadPubKey(peer, user, nextKey, *r)
+                    err = db.UploadPubKey(peer, user, nextKey, message.Message.Sid + 1)
+                    if err != nil {
+                        log.Println(err)
+                    }
                 }
 
+                // Send the message to the UI thread to be displayed
                 output := map[string]string{
                     "Username": message.Username,
                     "Timestamp": message.Timestamp,
                     "Message": string(clearText),
                 }
-
                 glib.IdleAdd(ui.ShowMessage, output)
             }
         }
+
+        // Sleep for 1 second before polling again
         time.Sleep(time.Second)
     }
 }
