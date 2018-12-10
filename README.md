@@ -1,7 +1,7 @@
 Quicksilver
 ===========
 
-End-to-end encrypted chat client with Perfect Forward Secrecy, for use with the Mercury chat server at github.com/fabiocolacio/Mercury.
+End-to-end encrypted chat client with Perfect Forward Secrecy, for use with the Mercury chat server at https://github.com/fabiocolacio/Mercury.
 
 
 Install
