@@ -20,9 +20,7 @@ const(
 
 var(
     secureHash = sha256.New
-
     Curve = elliptic.P521()
-
     ErrUnexpectedMAC = errors.New("Computed and expected MAC tags do not match.")
 )
 
@@ -41,6 +39,8 @@ func DeriveKey(mother []byte, keysize int) []byte {
     return pbkdf2.Key(mother, nil, 4096, keysize, secureHash)
 }
 
+// ECDH Performs combines public and private ECDH parameters and derives an
+// AES key from the shared secret.
 func ECDH(priv []byte, x, y *big.Int) []byte {
     // Create shared secret xp from peer's public key and our private key
     xp, _ := Curve.ScalarMult(x, y, priv)
@@ -49,12 +49,9 @@ func ECDH(priv []byte, x, y *big.Int) []byte {
     return DeriveKey(xp.Bytes(), aesKeySize)
 }
 
-// Encrypt encrypts clearText using a shared secret acquired through an
-// elliptic-curve diffie-hellman key exchange.
-//
-// Your private diffie-hellman information, priv, is used with the peer's
-// public diffie-hellman information (bx, by), to create a shared AES session
-// key to encrypt clearText with. Returns an EncryptedMessage and an error.
+// Encrypt encrypts clearText aesKey, and advertises the next key nxt in the
+// resulting message structure. sid and rid indicate to the receiver which keys
+// should be used to decrypt the message.
 func EncryptMessage(clearText, aesKey, nxt []byte, sid, rid int) (msg *EncryptedMessage, err error) {
     // Create a random HMAC key
     hmacKey := make([]byte, hmacKeySize)
@@ -121,6 +118,9 @@ func EncryptMessage(clearText, aesKey, nxt []byte, sid, rid int) (msg *Encrypted
     return msg, err
 }
 
+// Decrypt decrypts a message that was encrypted with EncryptMessage.
+// It returns the original encrypted message, along with public key that was
+// advertised in the message.
 func (message *EncryptedMessage) Decrypt(aesKey []byte) (clearText, nextKey []byte, err error) {
     // Create AES block cipher
     aesCipher, err := aes.NewCipher(aesKey)
@@ -157,6 +157,7 @@ func (message *EncryptedMessage) Decrypt(aesKey []byte) (clearText, nextKey []by
     return msg, nxt, err
 }
 
+// CheckMAC verifies computes a MAC for message and compares it against messageMAC
 func CheckMAC(message, messageMAC, key []byte) bool {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)

@@ -26,12 +26,15 @@ var(
     }
 )
 
+// Message represents Mercury's internal representation
+// of a message
 type Message struct {
     Username  string
     Timestamp string
     Message   crypto.EncryptedMessage
 }
 
+// MessageFetch checks for messages from peer through the Mercury Server
 func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
     uri := host + "/get?peer=" + url.QueryEscape(peer)
 
@@ -68,6 +71,7 @@ func MessageFetch(jwt []byte, peer, since string) ([]Message, error) {
     return messages, err
 }
 
+// MessageSend sends message to peer using the Mercrury server
 func MessageSend(jwt []byte, peer, message string) error {
     uri := host + "/send?to=" + url.QueryEscape(peer)
     request, err := http.NewRequest("POST", uri, bytes.NewBuffer([]byte(message)))
@@ -93,10 +97,12 @@ func MessageSend(jwt []byte, peer, message string) error {
     return nil
 }
 
+// SetHost changes the host server that will be used by Quicksilver
 func SetHost(newHost string) {
     host = newHost
 }
 
+// LookupUser checks if a user exists in Mercury's database
 func LookupUser(user string) error {
     res, err := client.Get(host + "/lookup?user=" + user)
     if err != nil {
@@ -110,6 +116,7 @@ func LookupUser(user string) error {
     return nil
 }
 
+// Register registers a user with the Mercury server
 func Register(user, passwd string) error {
     creds := map[string]string{
         "Username": user,
@@ -132,6 +139,8 @@ func Register(user, passwd string) error {
     return nil
 }
 
+// Login attempts to login to the Mercury Server.
+// If it is successful, it returns the JWT.
 func Login(user, passwd string) ([]byte, error) {
     creds := map[string]string{
         "Username": user,

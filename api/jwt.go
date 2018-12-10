@@ -13,14 +13,13 @@ var(
     ErrMalformedJWT = errors.New("Malformed JWT")
 )
 
+// UnwrapJWT returns the JSON payload element of a JWT
 func UnwrapJWT(jwt []byte) (server.Session, error) {
     var sess server.Session
-
     elements := strings.Split(string(jwt), ".")
     if len(elements) < 3 {
         return sess, ErrMalformedJWT
     }
-
     payload := elements[1]
     jsonObj := make([]byte, base64.URLEncoding.DecodedLen(len(payload)))
 
