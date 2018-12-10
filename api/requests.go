@@ -7,8 +7,12 @@ import(
     "bytes"
     "io/ioutil"
     "crypto/tls"
+    "crypto/hmac"
+    "crypto/sha256"
     "net/url"
+    "log"
     "github.com/fabiocolacio/quicksilver/crypto"
+    "golang.org/x/crypto/scrypt"
 )
 
 var(
@@ -142,21 +146,30 @@ func Register(user, passwd string) error {
 // Login attempts to login to the Mercury Server.
 // If it is successful, it returns the JWT.
 func Login(user, passwd string) ([]byte, error) {
-    creds := map[string]string{
-        "Username": user,
-        "Password": passwd,
+    res, err := client.Get(host + "/login?user=" + user)
+    challenge := make(map[string][]byte)
+    body, err := ioutil.ReadAll(res.Body)
+    if err != nil {
+        return nil, err
     }
+    err = json.Unmarshal(body, &challenge)
+    res.Body.Close()
 
-    payload, err := json.Marshal(creds)
+    saltedHash, err := scrypt.Key([]byte(passwd), challenge["S"], 32768, 8, 1, 32)
     if err != nil {
         return nil, err
     }
 
-    res, err := client.Post(host + "/login", "text/javascript", bytes.NewBuffer(payload))
+    mac := hmac.New(sha256.New, saltedHash)
+    mac.Write(challenge["C"])
+    payload := mac.Sum(nil)
+
+    res, err = client.Post(host + "/auth?user=" + user, "text/javascript", bytes.NewBuffer(payload))
     if err != nil {
         return nil, err
     }
     if res.StatusCode != 200 {
+        log.Println(res.StatusCode)
         return nil, ErrLoginFailed
     }
 
