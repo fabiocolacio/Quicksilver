@@ -22,6 +22,7 @@ import org.json.JSONWriter;
 import org.json.JSONObject;
 import org.json.JSONException;
 import android.util.Base64;
+import android.util.Log;
 
 public class API {
     private static String host = "https://fabiocolacio.xyz:443";
@@ -54,8 +55,10 @@ public class API {
             writer.close();
 
             int status = con.getResponseCode();
-
-            System.out.printf ("Status %d\n", status);
+            if (status != 200) {
+                Log.e("Login", "auth failed");
+                return;
+            }
         } catch (MalformedURLException e) {
             System.out.println(e);
         } catch (JSONException e) {
@@ -63,7 +66,7 @@ public class API {
         }
     }
 
-    public static void login(String username, String password) throws IOException {
+    public static String login(String username, String password) {
         try {
             String encodedUsername = URLEncoder.encode(username, "UTF-8");
             URL url = new URL(host + "/login?user=" + encodedUsername);
@@ -72,7 +75,10 @@ public class API {
             con.setRequestMethod("POST");
 
             int status = con.getResponseCode();
-            System.out.printf("Status %d\n", status);
+            if (status != 200) {
+                Log.e("Login", "auth failed");
+                return null;
+            }
 
             int contentLength = con.getContentLength();
             char[] body = new char[contentLength];
@@ -113,15 +119,20 @@ public class API {
             outputStream.close();
 
             status = con.getResponseCode();
-            System.out.printf("Status %d\n", status);
+            if (status != 200) {
+                Log.e("Login", "auth failed");
+                return null;
+            }
 
             contentLength = con.getContentLength();
-            body = new char[contentLength];
+            char[] jwt = new char[contentLength];
             reader = new InputStreamReader(con.getInputStream());
             reader.read(body, 0, contentLength);
             reader.close();
 
-            System.out.printf("JWT: %s\n", new String(body));
+            Log.i("Login", "JWT: " + new String(jwt));
+
+            return new String(jwt);
         } catch (MalformedURLException e) {
             System.out.println(e);
         } catch (NoSuchAlgorithmException e) {
@@ -130,7 +141,11 @@ public class API {
             System.out.println(e);
         } catch (JSONException e) {
             System.out.println(e);
+        } catch (IOException e) {
+            System.out.println(e);
         }
+
+        return null;
     }
 }
 
