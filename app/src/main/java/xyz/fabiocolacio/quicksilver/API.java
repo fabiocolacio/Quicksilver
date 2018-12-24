@@ -36,7 +36,7 @@ public class API {
         return host;
     }
 
-    public static void register(String username, String password) throws IOException {
+    public static int register(String username, String password) {
         try {
             URL url = new URL(host + "/register");
 
@@ -55,15 +55,16 @@ public class API {
             writer.close();
 
             int status = con.getResponseCode();
-            if (status != 200) {
-                Log.e("Login", "auth failed");
-                return;
-            }
+            return status;
         } catch (MalformedURLException e) {
             System.out.println(e);
         } catch (JSONException e) {
             System.out.println(e);
+        } catch (IOException e) {
+            System.out.println(e);
         }
+
+        return -1;
     }
 
     public static String login(String username, String password) {
