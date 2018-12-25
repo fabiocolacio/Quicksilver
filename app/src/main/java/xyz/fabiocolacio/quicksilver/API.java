@@ -25,12 +25,12 @@ import android.util.Base64;
 import android.util.Log;
 
 public class API {
-    private static String host = "https://fabiocolacio.xyz:443";
-
-    private static int SCRYPT_CPU_MEM_COST = 32768;
-    private static int SCRYPT_BLOCK_SIZE = 8;
-    private static int SCRYPT_PARALLELIZATION = 1;
-    private static int SALTED_HASH_LEN = 32;
+    public static final String host = "https://fabiocolacio.xyz:443";
+    public static final int SCRYPT_CPU_MEM_COST = 32768;
+    public static final int SCRYPT_BLOCK_SIZE = 8;
+    public static final int SCRYPT_PARALLELIZATION = 1;
+    public static final int SALTED_HASH_LEN = 32;
+    public static final int USERNAME_MAX_LEN = 16;
 
     public static String getHost() {
         return host;
