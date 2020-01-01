@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">QuickSilver</string>
+    <string name="log_header">Log:</string>
 </resources>
