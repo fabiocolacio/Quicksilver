@@ -71,20 +71,23 @@ class FakeServer(mainThreadLooper: Looper, simulatedDelay: Int) {
 
     fun requestRegisterKey(userName : String, publicKeyBytes : ByteArray, format : String,
                            callback : (Boolean) -> Unit) {
-        var msg = Message()
+        val msg = Message()
+        msg.what = MSG_REGISTER_KEY
         msg.obj = RequestInfo(userName, format, publicKeyBytes, callback)
         handler.sendMessageAtTime(msg, uptimeMillis() + simulatedDelayMs)
     }
 
     fun requestUnregisterKey(userName : String, callback : (Boolean) -> Unit) {
-        var msg = Message()
+        val msg = Message()
+        msg.what = MSG_UNREGISTER_KEY
         msg.obj = RequestInfo(userName, null,null, callback)
         handler.sendMessageAtTime(msg, uptimeMillis() + simulatedDelayMs)
     }
 
     fun requestLogin(userName : String, testSignature : ByteArray,
                      callback : (Boolean) -> Unit) {
-        var msg = Message()
+        val msg = Message()
+        msg.what = MSG_LOGIN
         msg.obj = RequestInfo(userName, null, testSignature, callback)
         handler.sendMessageAtTime(msg, uptimeMillis() + simulatedDelayMs)
     }
@@ -95,7 +98,7 @@ class FakeServer(mainThreadLooper: Looper, simulatedDelay: Int) {
             callback(false)
             return
         }
-        var spec : KeySpec
+        val spec : KeySpec
         if (format == "X.509") {
             spec = X509EncodedKeySpec(publicKeyBytes)
         }
