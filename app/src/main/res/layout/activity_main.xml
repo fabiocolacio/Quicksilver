@@ -20,9 +20,11 @@
             android:gravity="center">
 
             <ProgressBar
-                android:id="@+id/indeterminateBar"
+                android:id="@+id/bar_indeterminate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:indeterminateTint="#000000"
+                android:indeterminateTintMode="src_in"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
@@ -33,6 +35,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:srcCompat="@drawable/check_anim" />
+
         </LinearLayout>
 
         <TextView

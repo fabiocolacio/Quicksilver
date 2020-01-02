@@ -2,9 +2,9 @@ package com.example.quicksilver.UI
 
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.util.Log
-import android.view.View.INVISIBLE
-import android.view.View.VISIBLE
+import android.view.View.*
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat
 import com.example.quicksilver.MainActivity
@@ -22,12 +22,14 @@ class View (ctx : MainActivity, var model : Model) : Observer {
     private var oldModelInfo : OldModelInfo
     private var textDisplay : TextView
     private var imageCheck : ImageView
+    private var barIndeterminate : ProgressBar
 
     init {
         oldModelInfo = OldModelInfo(-1)
         textDisplay = ctx.findViewById(R.id.text_display)
         imageCheck = ctx.findViewById(R.id.image_check)
-        imageCheck.visibility = INVISIBLE
+        barIndeterminate = ctx.findViewById(R.id.bar_indeterminate)
+        imageCheck.visibility = GONE
     }
 
     override fun update(o: Observable?, arg: Any?) {
@@ -53,6 +55,7 @@ class View (ctx : MainActivity, var model : Model) : Observer {
     }
 
     private fun animateImageCheck() {
+        barIndeterminate.visibility = GONE
         imageCheck.visibility = VISIBLE
         if (imageCheck.drawable is AnimatedVectorDrawable) {
             val avd = imageCheck.drawable as AnimatedVectorDrawable
